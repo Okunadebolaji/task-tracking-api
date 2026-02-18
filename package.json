@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "ngx-papaparse": "^6.0.1"
+  }
+}

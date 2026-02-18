@@ -1,0 +1,21 @@
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy csproj and restore dependencies
+# Replace 'TaskTrackingApi' with your actual .csproj folder name if different
+COPY ["TaskTrackingApi.csproj", "./"]
+RUN dotnet restore "TaskTrackingApi.csproj"
+
+# Copy everything else and build
+COPY . .
+RUN dotnet publish "TaskTrackingApi.csproj" -c Release -o /app/publish
+
+# Stage 2: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# The PORT variable is handled by your Program.cs, 
+# so we just start the DLL
+ENTRYPOINT ["dotnet", "TaskTrackingApi.dll"]

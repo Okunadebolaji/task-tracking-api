@@ -27,7 +27,7 @@ builder.Services.AddDbContext<TaskTrackingDbContext>(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("NetlifyPolicy", p =>
-        p.WithOrigins("https://your-app-name.netlify.app") // <--- REPLACE WITH YOUR ACTUAL NETLIFY URL
+        p.WithOrigins("https://task-tackers.netlify.app") // <--- REPLACE WITH YOUR ACTUAL NETLIFY URL
          .AllowAnyHeader()
          .AllowAnyMethod());
 });

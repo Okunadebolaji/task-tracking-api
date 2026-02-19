@@ -42,12 +42,16 @@ app.UseCors("prod");
 
 
 
-// Swagger
-if (app.Environment.IsDevelopment())
+
+// This makes Swagger available in Production/Render
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Task Tracking API v1");
+    c.RoutePrefix = string.Empty; // This makes Swagger the home page!
+});
+
+
 app.UseCors("AllowAngular");
 app.UseHttpsRedirection();
 app.UseAuthorization();

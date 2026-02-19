@@ -1,17 +1,18 @@
+# Stage 1: Build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# 1. Copy the csproj from the subfolder to the container
-COPY ["TaskTrackingApi/TaskTrackingApi.csproj", "TaskTrackingApi/"]
+# 1. Copy the project file directly from the root
+# No more "TaskTrackingApi/" prefix!
+COPY ["TaskTrackingApi.csproj", "./"]
 
 # 2. Restore dependencies
-RUN dotnet restore "TaskTrackingApi/TaskTrackingApi.csproj"
+RUN dotnet restore "TaskTrackingApi.csproj"
 
-# 3. Copy everything else from your computer to the container
+# 3. Copy everything else
 COPY . .
 
-# 4. Move into the folder where the project lives to run the build
-WORKDIR "/src/TaskTrackingApi"
+# 4. Build the app
 RUN dotnet publish "TaskTrackingApi.csproj" -c Release -o /app/publish
 
 # Stage 2: Runtime
@@ -19,4 +20,5 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# Start the API
 ENTRYPOINT ["dotnet", "TaskTrackingApi.dll"]

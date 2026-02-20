@@ -189,8 +189,8 @@ public async Task<IActionResult> GetTaskById(
             Description = dto.Description!,
             References = dto.References,
             UserStory = dto.UserStory,   // ✅ include here
-            StartDate = dto.StartDate,
-            EndDate = dto.EndDate,
+           StartDate = DateTime.SpecifyKind(dto.StartDate, DateTimeKind.Utc),
+    EndDate = DateTime.SpecifyKind(dto.EndDate, DateTimeKind.Utc),
             Comment = dto.Comment,
             Source = dto.Source  ?? "Manual",
             ProjectId = dto.ProjectId,

@@ -4,7 +4,7 @@ using TaskTrackingApi.Models;
 using TaskTrackingApi.Dtos;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/taskstatus")]
 public class TaskStatusesController : ControllerBase
 {
     private readonly TaskTrackingDbContext _context;

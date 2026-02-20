@@ -158,72 +158,76 @@ public async Task<IActionResult> GetTaskById(
 
 
     // ================= CREATE TASK =================
-    [HttpPost]
-    public async Task<IActionResult> CreateTask(
-        [FromBody] CreateTaskDto dto,
-        [FromHeader(Name = "x-user-id")] string userIdHeader)
+  [HttpPost]
+public async Task<IActionResult> CreateTask(
+    [FromBody] CreateTaskDto dto,
+    [FromHeader(Name = "x-user-id")] string userIdHeader)
+{
+    if (!int.TryParse(userIdHeader, out var userId))
+        return BadRequest("Invalid x-user-id");
+
+    var user = await _db.Users.FindAsync(userId);
+    if (user == null) return Unauthorized();
+
+    var statusId = dto.StatusId;
+    if (statusId == null || statusId == 0)
     {
-        if (!int.TryParse(userIdHeader, out var userId))
-            return BadRequest("Invalid x-user-id");
+        statusId = await _db.TaskStatuses
+            .Where(s => s.IsDefault)
+            .Select(s => s.Id)
+            .FirstOrDefaultAsync();
 
-        var user = await _db.Users.FindAsync(userId);
-        if (user == null) return Unauthorized();
-
-
-
-        var statusId = dto.StatusId;
-        if (statusId == null || statusId == 0)
-        {
-            statusId = await _db.TaskStatuses
-                .Where(s => s.IsDefault)
-                .Select(s => s.Id)
-                .FirstOrDefaultAsync();
-
-            if (statusId == 0)
-                return BadRequest("No default task status configured");
-        }
-
-        var task = new TaskEntity
-        {
-            Module = dto.Module!,
-            Description = dto.Description!,
-            References = dto.References,
-            UserStory = dto.UserStory,   // ✅ include here
-           StartDate = DateTime.SpecifyKind(dto.StartDate, DateTimeKind.Utc),
-    EndDate = DateTime.SpecifyKind(dto.EndDate, DateTimeKind.Utc),
-            Comment = dto.Comment,
-            Source = dto.Source  ?? "Manual",
-            ProjectId = dto.ProjectId,
-            TeamId = dto.TeamId,
-            CreatedByUserId = userId,
-            CompanyId = user.CompanyId,
-            StatusId = statusId.Value,
-            CreatedAt = DateTime.UtcNow,
-            IsApproved = false,
-            IsRejected = false
-        };
-
-        await _db.Tasks.AddAsync(task);
-        await _db.SaveChangesAsync();
-
-        if (dto.AssignedUserIds != null && dto.AssignedUserIds.Any())
-        {
-            var validUsers = await _db.Users
-                .Where(u => dto.AssignedUserIds.Contains(u.Id) && u.CompanyId == user.CompanyId)
-                .Select(u => u.Id)
-                .ToListAsync();
-
-            foreach (var assignedUserId in validUsers)
-            {
-                _db.TaskAssignments.Add(new TaskAssignment { TaskId = task.Id, UserId = assignedUserId });
-            }
-
-            await _db.SaveChangesAsync();
-        }
-
-        return Ok(new { taskId = task.Id });
+        if (statusId == 0)
+            return BadRequest("No default task status configured");
     }
 
+    // 1. Create the Task object
+    var task = new TaskEntity
+    {
+        Module = dto.Module!,
+        Description = dto.Description!,
+        References = dto.References,
+        UserStory = dto.UserStory,
+        StartDate = DateTime.SpecifyKind(dto.StartDate, DateTimeKind.Utc),
+        EndDate = DateTime.SpecifyKind(dto.EndDate, DateTimeKind.Utc),
+        Comment = dto.Comment,
+        Source = dto.Source ?? "Manual",
+        ProjectId = dto.ProjectId,
+        TeamId = dto.TeamId,
+        CreatedByUserId = userId,
+        CompanyId = user.CompanyId,
+        StatusId = statusId.Value,
+        CreatedAt = DateTime.UtcNow,
+        IsApproved = false,
+        IsRejected = false
+    };
+
+    // 2. Add the Assignments BEFORE calling SaveChanges
+    if (dto.AssignedUserIds != null && dto.AssignedUserIds.Any())
+    {
+        var validUserIds = await _db.Users
+            .Where(u => dto.AssignedUserIds.Distinct().Contains(u.Id) && u.CompanyId == user.CompanyId)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        foreach (var assignedUserId in validUserIds)
+        {
+            // By adding to the task's Navigation Property, 
+            // EF will automatically link the TaskId during save.
+            task.TaskAssignments.Add(new TaskAssignment 
+            { 
+                UserId = assignedUserId,
+                AssignedAt = DateTime.UtcNow // Ensure this date is also set
+            });
+        }
+    }
+
+    // 3. Save everything once
+    _db.Tasks.Add(task);
+    await _db.SaveChangesAsync();
+
+    return Ok(new { taskId = task.Id });
+}
     // ================= UPDATE TASK =================
    [HttpPut("{id}")]
 public async Task<IActionResult> UpdateTask(
